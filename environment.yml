@@ -7,3 +7,4 @@ dependencies:
   - pip=21.2.4
   - pip:
     - streamlink==3.0.3
+    - pytesseract==0.3.8
