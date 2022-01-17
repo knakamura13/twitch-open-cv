@@ -12,6 +12,7 @@ class VideoCapture:
     Credit
         Ulrich Stern https://stackoverflow.com/a/54755738.
     """
+
     def __init__(self, name):
         self.cap = cv2.VideoCapture(name)
         self.q = queue.Queue()
@@ -58,10 +59,9 @@ def main():
         frame = cap.read()
         cv2.imshow('frame', frame)
 
-        if chr(cv2.waitKey(1)&255) == 'q':
+        if chr(cv2.waitKey(1) & 255) == 'q':
             break
 
 
 if __name__ == '__main__':
     main()
-
