@@ -1,11 +1,17 @@
 import re
+import os
 import cv2
 import time
 import queue
 import threading
 import numpy as np
-from pytesseract import image_to_string as OCR
 from streamlink import Streamlink
+from playsound import playsound as play_sound
+from pytesseract import image_to_string as OCR
+
+# Global variables
+
+should_notify_betting_started = True
 
 
 class VideoCapture:
@@ -27,7 +33,7 @@ class VideoCapture:
         Read frames as soon as they are available, discarding all but the most recent frame.
         """
         while True:
-            ret, frame = self.cap.read()  # <-- Error in the pull function.
+            ret, frame = self.cap.read()
             if not ret:
                 break
             if not self.q.empty():
@@ -69,6 +75,8 @@ def strip_special_chars(text: str) -> str:
 
 
 def extract_status_from_frame(frame):
+    global should_notify_betting_started
+
     status = {
         'is_open': False,
         'time_remaining': 0,
@@ -85,7 +93,6 @@ def extract_status_from_frame(frame):
 
     # Crop the frame down to the bet totals/countdown section
     status_frame_region = frame_copy[:64, -168:]
-    cv2.imshow('status_frame_region', status_frame_region)
 
     # Run OCR to extract text from the cropped frame
     # Examples:
@@ -107,6 +114,8 @@ def extract_status_from_frame(frame):
         # Extract the countdown timer from the text
         search_closed = re.search(r'closed', text)
         if search_closed:
+            should_notify_betting_started = True
+
             # Extract the bet totals from the text
             search_bets = re.search(r'[\d]{2,8} [\d]{2,8}', text)
             bets = search_bets.group().split(' ') if search_bets else None
@@ -142,7 +151,27 @@ def extract_status_from_frame(frame):
     return status
 
 
+def notify_game_start():
+    global should_notify_betting_started
+
+    # Play a sound effect
+    sound = 'sound-effects/game-start.mp3'
+    play_sound(sound, block=False)
+
+    # Show an alert
+    alert_text = 'Betting has started'
+    alert_title = 'SaltyTeemo'
+    cmd = """
+    osascript -e 'display notification "%s" with title "%s"'
+    """ % (alert_text, alert_title)
+    os.system(cmd)
+
+    should_notify_betting_started = False
+
+
 def main():
+    global should_notify_betting_started
+
     # Get a URL for the live video stream from Twitch
     session = Streamlink()
     streams = session.streams('https://twitch.tv/saltyteemo')
@@ -158,8 +187,8 @@ def main():
         frame = cap.read()
 
         betting_status = extract_status_from_frame(frame)
-        if betting_status['is_open']:
-            pass
+        if betting_status['is_open'] and should_notify_betting_started:
+            notify_game_start()
 
         if chr(cv2.waitKey(1) & 255) == 'q':
             break
