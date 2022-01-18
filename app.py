@@ -14,7 +14,7 @@ from pytesseract import image_to_string as OCR
 should_notify_betting_started = True
 
 
-class VideoCapture:
+class RealtimeVideoCapture:
     """
     Bufferless Video Capture class.
 
@@ -49,6 +49,22 @@ class VideoCapture:
         Fetch the most recent frame from the VideoCapture queue.
         """
         return self.q.get()
+
+
+def get_latest_frame_from_stream(stream_url: str) -> np.ndarray:
+    """
+    Get the most recent frame from a live video stream.
+
+    Creates a new instance of cv2::VideoCapture for each frame grab to avoid continuous data streaming.
+
+    @param stream_url Desired video stream URL.
+    @rtype np.ndarray
+    @return Processed video frame.
+    """
+    cap = cv2.VideoCapture(stream_url)
+    ret, frame = cap.read()
+    cap.release()
+    return frame
 
 
 def strip_special_chars(text: str) -> str:
@@ -168,6 +184,9 @@ def notify_game_start():
 
     should_notify_betting_started = False
 
+    # Wait 5 minutes before checking again since a game just started
+    time.sleep(5. * 60.)
+
 
 def main():
     global should_notify_betting_started
@@ -178,13 +197,11 @@ def main():
     stream = streams['720p60'] if '720p60' in streams.keys() else streams['480p']
     stream_url = stream.to_url()
 
-    cap = VideoCapture(stream_url)
-
     while True:
-        # Wait 1 second between frame grabs
-        time.sleep(1.)
+        # Wait 20 seconds between frame grabs
+        time.sleep(10.)
 
-        frame = cap.read()
+        frame = get_latest_frame_from_stream(stream_url)
 
         betting_status = extract_status_from_frame(frame)
         if betting_status['is_open'] and should_notify_betting_started:
