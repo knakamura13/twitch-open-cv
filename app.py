@@ -61,10 +61,15 @@ def get_latest_frame_from_stream(stream_url: str) -> np.ndarray:
     @rtype np.ndarray
     @return Processed video frame.
     """
-    cap = cv2.VideoCapture(stream_url)
-    ret, frame = cap.read()
-    cap.release()
-    return frame
+    try:
+        cap = cv2.VideoCapture(stream_url)
+        ret, frame = cap.read()
+        cap.release()
+        return frame
+    except SystemError:
+        pass
+
+    return np.zeros((100, 100))
 
 
 def strip_special_chars(text: str) -> str:
