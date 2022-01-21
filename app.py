@@ -9,6 +9,7 @@ from streamlink import Streamlink
 from playsound import playsound as play_sound
 from pytesseract import image_to_string as OCR
 
+
 # Global variables
 
 should_notify_betting_started = True
@@ -61,10 +62,15 @@ def get_latest_frame_from_stream(stream_url: str) -> np.ndarray:
     @rtype np.ndarray
     @return Processed video frame.
     """
-    cap = cv2.VideoCapture(stream_url)
-    ret, frame = cap.read()
-    cap.release()
-    return frame
+    try:
+        cap = cv2.VideoCapture(stream_url)
+        ret, frame = cap.read()
+        cap.release()
+        return frame
+    except SystemError:
+        pass
+
+    return np.zeros((100, 100))
 
 
 def strip_special_chars(text: str) -> str:
@@ -104,6 +110,11 @@ def extract_status_from_frame(frame):
         'region': 'None'
     }
 
+    try:
+        _ = frame.copy()
+    except AttributeError:
+        return status
+
     # Make a copy of the original frame
     frame_copy = frame.copy()
 
@@ -116,8 +127,12 @@ def extract_status_from_frame(frame):
     #   closed 318 rating on tr 56607 75960
     #   00:00 378 rating on tr fore open
     #   01:32 378 rating on tr open open
-    text = OCR(status_frame_region, lang='eng')
-    text = strip_special_chars(text).lower()
+    text = ''
+    try:
+        text = OCR(status_frame_region, lang='eng')
+        text = strip_special_chars(text).lower()
+    except Exception as e:
+        pass
 
     search_game_info = re.search(r'rating', text)
     if search_game_info:
